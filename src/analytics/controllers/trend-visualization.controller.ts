@@ -34,7 +34,9 @@ export class TrendVisualizationController {
   }
 
   private prepareVisualizationData(chainA: any[], chainB: any[]) {
-    // Format data for frontend visualization
+    
+    // Prepare data for visualization   
+
     return {
       labels: chainA.map(d => d.timestamp.toISOString()),
       datasets: [

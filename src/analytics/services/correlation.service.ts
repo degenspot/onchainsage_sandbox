@@ -7,7 +7,7 @@ export class CorrelationService {
     chainDataA: NormalizedChainData[],
     chainDataB: NormalizedChainData[],
   ): { score: number; lag: number } {
-    // Implement Pearson correlation or other metric
+    
     const alignedData = this.alignTimestamps(chainDataA, chainDataB);
     
     const correlation = this.pearsonCorrelation(
@@ -37,14 +37,11 @@ export class CorrelationService {
   }
 
   private alignTimestamps(chainA: NormalizedChainData[], chainB: NormalizedChainData[]) {
-    // Align data points by timestamp
-    // Implementation omitted for brevity
-    return [];
+   
+return [];
   }
 
   private calculateLag(alignedData: any[]): number {
-    // Calculate time lag between trends
-    // Implementation omitted for brevity
-    return 0;
+   return 0;
   }
 }

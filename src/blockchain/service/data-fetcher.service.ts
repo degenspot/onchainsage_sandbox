@@ -25,7 +25,6 @@ export class DataFetcherService {
       transactionCount: item.transactionCount || item.tx_count,
       uniqueAddresses: item.uniqueAddresses || item.unique_address_count,
       gasFees: item.gasFees || item.gas_fees,
-      // Add other normalized fields
     }));
   }
 }
