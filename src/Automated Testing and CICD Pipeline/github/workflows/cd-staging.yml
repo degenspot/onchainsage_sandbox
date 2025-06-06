@@ -1,0 +1,86 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ develop ]
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download Docker image
+      uses: actions/download-artifact@v3
+      with:
+        name: docker-image
+
+    - name: Load Docker image
+      run: docker load < nestjs-app.tar.gz
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Push to ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: nestjs-app
+        IMAGE_TAG: staging-${{ github.sha }}
+      run: |
+        docker tag nestjs-app:${{ github.sha }} $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker tag nestjs-app:${{ github.sha }} $ECR_REGISTRY/$ECR_REPOSITORY:staging-latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:staging-latest
+
+    - name: Run database migrations
+      run: |
+        kubectl apply -f deployment/k8s/migration-job.yaml
+        kubectl wait --for=condition=complete job/db-migration --timeout=300s
+
+    - name: Deploy to staging
+      run: |
+        sed -i 's|IMAGE_TAG|staging-${{ github.sha }}|g' deployment/k8s/deployment.yaml
+        kubectl apply -f deployment/k8s/namespace.yaml
+        kubectl apply -f deployment/k8s/configmap.yaml
+        kubectl apply -f deployment/k8s/deployment.yaml
+        kubectl apply -f deployment/k8s/service.yaml
+        kubectl apply -f deployment/k8s/ingress.yaml
+
+    - name: Wait for deployment
+      run: |
+        kubectl rollout status deployment/nestjs-app -n staging --timeout=600s
+
+    - name: Run smoke tests
+      run: |
+        STAGING_URL="https://staging.nestjs-app.com"
+        curl -f $STAGING_URL/health || exit 1
+        npm run test:e2e -- --baseUrl=$STAGING_URL
+
+    - name: Notify deployment success
+      if: success()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: "Staging deployment successful! :rocket:"
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Notify deployment failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: "Staging deployment failed! :x:"
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

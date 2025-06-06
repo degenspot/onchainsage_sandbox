@@ -1,0 +1,85 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download Docker image
+      uses: actions/download-artifact@v3
+      with:
+        name: docker-image
+
+    - name: Load Docker image
+      run: docker load < nestjs-app.tar.gz
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Push to ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: nestjs-app
+        IMAGE_TAG: prod-${{ github.sha }}
+      run: |
+        docker tag nestjs-app:${{ github.sha }} $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker tag nestjs-app:${{ github.sha }} $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Create backup
+      run: |
+        kubectl create job backup-$(date +%Y%m%d-%H%M%S) --from=cronjob/db-backup
+
+    - name: Run database migrations
+      run: |
+        kubectl apply -f deployment/k8s/migration-job.yaml
+        kubectl wait --for=condition=complete job/db-migration --timeout=300s
+
+    - name: Blue-Green deployment
+      run: |
+        # Deploy to green environment
+        sed -i 's|IMAGE_TAG|prod-${{ github.sha }}|g' deployment/k8s/deployment-green.yaml
+        kubectl apply -f deployment/k8s/deployment-green.yaml
+        kubectl rollout status deployment/nestjs-app-green --timeout=600s
+        
+        # Run health checks on green
+        kubectl port-forward service/nestjs-app-green 8080:80 &
+        sleep 10
+        curl -f http://localhost:8080/health || exit 1
+        
+        # Switch traffic to green
+        kubectl patch service nestjs-app -p '{"spec":{"selector":{"version":"green"}}}'
+        
+        # Scale down blue
+        kubectl scale deployment nestjs-app-blue --replicas=0
+
+    - name: Run performance tests
+      run: |
+        npm install -g artillery
+        artillery run test/performance/production-load-test.yml
+
+    - name: Notify deployment success
+      if: success()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: "Production deployment successful! :rocket:"
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

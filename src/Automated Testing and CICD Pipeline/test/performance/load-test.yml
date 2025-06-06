@@ -1,0 +1,60 @@
+config:
+  target: 'http://localhost:3000'
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: Warm up
+    - duration: 300
+      arrivalRate: 10
+      name: Ramp up load
+    - duration: 600
+      arrivalRate: 15
+      name: Sustained load
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+
+scenarios:
+  - name: 'Authentication Flow'
+    weight: 70
+    flow:
+      - post:
+          url: '/auth/register'
+          json:
+            email: '{{ $randomString() }}@example.com'
+            name: 'Test User {{ $randomString() }}'
+            password: 'password123'
+      - post:
+          url: '/auth/login'
+          json:
+            email: '{{ email }}'
+            password: 'password123'
+          capture:
+            - json: '$.access_token'
+              as: 'token'
+      - get:
+          url: '/users/profile'
+          headers:
+            Authorization: 'Bearer {{ token }}'
+
+  - name: 'User Management'
+    weight: 30
+    flow:
+      - post:
+          url: '/auth/register'
+          json:
+            email: '{{ $randomString() }}@example.com'
+            name: 'Test User {{ $randomString() }}'
+            password: 'password123'
+      - post:
+          url: '/auth/login'
+          json:
+            email: '{{ email }}'
+            password: 'password123'
+          capture:
+            - json: '$.access_token'
+              as: 'token'
+      - get:
+          url: '/users'
+          headers:
+            Authorization: 'Bearer {{ token }}'
