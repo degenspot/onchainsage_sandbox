@@ -1,0 +1,7 @@
+export enum ForumPostStatus {
+  PUBLISHED = 'PUBLISHED',
+  UNDER_REVIEW = 'UNDER_REVIEW',
+  FLAGGED = 'FLAGGED',
+  HIDDEN = 'HIDDEN',
+  DELETED = 'DELETED',
+}

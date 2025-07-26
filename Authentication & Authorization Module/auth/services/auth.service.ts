@@ -1,14 +1,17 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
-import { UsersService } from '../../users/users.service';
 import { TokenService } from './token.service';
 import { AuditService } from '../../audit/audit.service';
 import { LoginDto } from '../dto/login.dto';
+import { verifyMessage } from 'ethers';
 import { RegisterDto } from '../dto/register.dto';
 import { comparePasswords, hashPassword } from '../../common/utils/bcrypt.utils';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
+import { randomUUID } from 'crypto';
+import { UsersService } from 'Authentication & Authorization Module/users/entities/users.service';
 
 @Injectable()
 export class AuthService {
+  userRepo: any;
   constructor(
     private readonly usersService: UsersService,
     private readonly tokenService: TokenService,
@@ -104,5 +107,34 @@ export class AuthService {
     await this.usersService.updateRefreshToken(user.id, hashedRefreshToken);
 
     return { accessToken, refreshToken };
+  }
+
+  private nonces = new Map<string, string>();
+
+  generateNonce(walletAddress: string) {
+    const nonce = randomUUID();
+    this.nonces.set(walletAddress, nonce);
+    return { nonce };
+  }
+
+  async verifyAndLogin({ walletAddress, signature }: any) {
+    const nonce = this.nonces.get(walletAddress);
+    const signer = verifyMessageWrapper(nonce, signature);
+    if (signer.toLowerCase() !== walletAddress.toLowerCase()) throw new UnauthorizedException();
+
+    let user = await this.userRepo.findOne({ where: { walletAddress } });
+    if (!user) user = this.userRepo.create({ walletAddress });
+    return this.userRepo.save(user);
+  }
+}
+
+function verifyMessageWrapper(nonce: string | undefined, signature: any): string {
+  if (!nonce || !signature) {
+    throw new UnauthorizedException('Nonce or signature missing');
+  }
+  try {
+    return verifyMessage(nonce, signature);
+  } catch (error) {
+    throw new UnauthorizedException('Invalid signature');
   }
 }
