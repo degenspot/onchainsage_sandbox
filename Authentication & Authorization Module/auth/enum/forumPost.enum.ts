@@ -1,0 +1,5 @@
+export enum ForumPostType {
+  QUESTION = 'QUESTION',
+  DISCUSSION = 'DISCUSSION',
+  ANNOUNCEMENT = 'ANNOUNCEMENT',
+}
