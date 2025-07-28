@@ -1,4 +1,4 @@
-import { WebSocketGateway, SubscribeMessage, MessageBody, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import { WebSocketGateway, SubscribeMessage, MessageBody, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect, ConnectedSocket } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { RoomService } from './room.service';
@@ -41,7 +41,18 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleJoinRoom(@MessageBody() data: { roomId: number }, @ConnectedSocket() client: Socket) {
     const room = await this.roomService.joinRoom(data.roomId, client.data.user);
     client.join(`room_${room.id}`);
-    this.server.to(`room_${room.id}`).emit('user_joined', { user: client.data.user, room });
-    return room;
-  }
+  this.server.to(`room_${room.id}`).emit('user_joined', { user: client.data.user, room });
+  return room;
+}
+
+@SubscribeMessage('send_message')
+async handleSendMessage(
+  @MessageBody() data: { roomId: number; content: string; type: string },
+  @ConnectedSocket() client: Socket,
+) {
+  const room = await this.roomService.findById(data.roomId);
+  const message = await this.messageService.createMessage(data.content, data.type, client.data.user, room);
+  this.server.to(`room_${data.roomId}`).emit('new_message', message);
+  return message;
+}
 }
