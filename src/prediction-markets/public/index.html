@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OnChainSage Prediction Markets</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .market-card {
+            transition: transform 0.2s;
+            border: 1px solid #e0e0e0;
+        }
+        .market-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .participation-btn {
+            min-width: 100px;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            color: #667eea !important;
+        }
+        .btn-primary {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .btn-primary:hover {
+            background-color: #5a6fd8;
+            border-color: #5a6fd8;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>
+                OnChainSage Prediction Markets
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="#" onclick="showCreateMarket()">
+                    <i class="fas fa-plus me-1"></i>Create Market
+                </a>
+                <a class="nav-link" href="#" onclick="showMyParticipations()">
+                    <i class="fas fa-user me-1"></i>My Participations
+                </a>
+                <a class="nav-link" href="#" onclick="showAnalytics()">
+                    <i class="fas fa-chart-bar me-1"></i>Analytics
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Stats Section -->
+        <div class="row mb-4" id="statsSection">
+            <div class="col-md-3">
+                <div class="card stats-card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Markets</h5>
+                        <h3 id="totalMarkets">0</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Open Markets</h5>
+                        <h3 id="openMarkets">0</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Volume</h5>
+                        <h3 id="totalVolume">$0</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Winnings</h5>
+                        <h3 id="totalWinnings">$0</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search markets...">
+                    <button class="btn btn-outline-secondary" type="button" onclick="searchMarkets()">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary" onclick="filterMarkets('all')">All</button>
+                    <button type="button" class="btn btn-outline-primary" onclick="filterMarkets('open')">Open</button>
+                    <button type="button" class="btn btn-outline-primary" onclick="filterMarkets('resolved')">Resolved</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Markets List -->
+        <div id="marketsList" class="row">
+            <!-- Markets will be loaded here -->
+        </div>
+
+        <!-- Create Market Modal -->
+        <div class="modal fade" id="createMarketModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Create New Prediction Market</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="createMarketForm">
+                            <div class="mb-3">
+                                <label class="form-label">Market Title</label>
+                                <input type="text" class="form-control" id="marketTitle" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" id="marketDescription" rows="3" required></textarea>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Market Type</label>
+                                        <select class="form-select" id="marketType" required>
+                                            <option value="token_price">Token Price</option>
+                                            <option value="event_outcome">Event Outcome</option>
+                                            <option value="timeline_event">Timeline Event</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Resolution Type</label>
+                                        <select class="form-select" id="resolutionType" required>
+                                            <option value="oracle">Oracle</option>
+                                            <option value="manual">Manual</option>
+                                            <option value="community_vote">Community Vote</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row" id="tokenPriceFields" style="display: none;">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Token Symbol</label>
+                                        <input type="text" class="form-control" id="tokenSymbol">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Target Price</label>
+                                        <input type="number" class="form-control" id="targetPrice" step="0.01">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Start Date</label>
+                                        <input type="datetime-local" class="form-control" id="startDate" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">End Date</label>
+                                        <input type="datetime-local" class="form-control" id="endDate" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="createMarket()">Create Market</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Participate Modal -->
+        <div class="modal fade" id="participateModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Participate in Market</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="participateForm">
+                            <div class="mb-3">
+                                <label class="form-label">Your Prediction</label>
+                                <select class="form-select" id="participationType" required>
+                                    <option value="yes">Yes</option>
+                                    <option value="no">No</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Amount to Stake</label>
+                                <input type="number" class="form-control" id="stakeAmount" min="0.01" step="0.01" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Wallet Address (Optional)</label>
+                                <input type="text" class="form-control" id="userAddress" placeholder="0x...">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="participateInMarket()">Participate</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="prediction-markets.js"></script>
+</body>
+</html> 
