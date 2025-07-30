@@ -8,6 +8,11 @@ import { PredictionMarketsModule } from './prediction-markets/prediction-markets
 
 @Module({
   imports: [AchievementsModule, ChallengeModule, PredictionMarketsModule],
+import { WalletModule } from './wallet/wallet.module';
+import { NewsVerificationModule } from './news-verification/news-verification.module';
+
+@Module({
+  imports: [AchievementsModule, ChallengeModule, WalletModule, NewsVerificationModule],
   controllers: [AppController],
   providers: [AppService],
 })
