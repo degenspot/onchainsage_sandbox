@@ -6,15 +6,20 @@ import { AchievementsModule } from './achievements/achievements.module';
 import { ChallengeModule } from './challenge/challenge.module';
 import { PredictionMarketsModule } from './prediction-markets/prediction-markets.module';
 import { TournamentsModule } from './tournaments/tournaments.module';
-
-@Module({
-  imports: [AchievementsModule, ChallengeModule, PredictionMarketsModule, TournamentsModule],
-  imports: [AchievementsModule, ChallengeModule, PredictionMarketsModule],
 import { WalletModule } from './wallet/wallet.module';
 import { NewsVerificationModule } from './news-verification/news-verification.module';
+import { CustomAlertsModule } from './custom-alerts/custom-alerts.module';
 
 @Module({
-  imports: [AchievementsModule, ChallengeModule, WalletModule, NewsVerificationModule],
+  imports: [
+    AchievementsModule, 
+    ChallengeModule, 
+    PredictionMarketsModule, 
+    TournamentsModule,
+    WalletModule, 
+    NewsVerificationModule,
+    CustomAlertsModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
