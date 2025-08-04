@@ -3,11 +3,21 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { AchievementService } from '../services/achievement.service';
 import { CreateAchievementDto } from '../dto/achievement.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { Nft } from '../entities/nft.entity';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { NftService } from '../services/nft.service';
+import { NotFoundException } from '@nestjs/common';
 
 @ApiTags('achievements')
 @Controller('achievements')
 export class AchievementController {
-  constructor(private readonly achievementService: AchievementService) {}
+  constructor(
+    private readonly achievementService: AchievementService,
+    @InjectRepository(Nft)
+    private readonly nftRepository: Repository<Nft>,
+    private readonly nftService: NftService,
+  ) {}
 
   @ApiOperation({ summary: 'Create new achievement' })
   @ApiResponse({ status: 201, description: 'Achievement created successfully' })
@@ -54,5 +64,60 @@ export class AchievementController {
   @Get('leaderboard')
   async getLeaderboard(@Query('limit') limit: number = 10) {
     return this.achievementService.getLeaderboard(limit);
+  }
+
+  @ApiOperation({ summary: 'Get all NFTs for a user' })
+  @ApiResponse({ status: 200, description: 'List of user NFTs', type: [Nft] })
+  @Get('nfts/user/:userId')
+  @UseGuards(JwtAuthGuard)
+  async getUserNfts(@Param('userId') userId: string) {
+    return this.nftRepository.find({ where: { userId } });
+  }
+
+  @ApiOperation({ summary: 'Showcase an NFT on user profile' })
+  @ApiResponse({ status: 200, description: 'NFT showcased' })
+  @Post('nfts/:nftId/showcase')
+  @UseGuards(JwtAuthGuard)
+  async showcaseNft(@Param('nftId') nftId: string, @Request() req) {
+    const nft = await this.nftRepository.findOne({ where: { id: nftId, userId: req.user.id } });
+    if (!nft) throw new NotFoundException('NFT not found');
+    nft.isShowcased = true;
+    await this.nftRepository.save(nft);
+    return { message: 'NFT showcased' };
+  }
+
+  @ApiOperation({ summary: 'Set an NFT for trade' })
+  @ApiResponse({ status: 200, description: 'NFT set for trade' })
+  @Post('nfts/:nftId/trade')
+  @UseGuards(JwtAuthGuard)
+  async setNftForTrade(@Param('nftId') nftId: string, @Request() req) {
+    const nft = await this.nftRepository.findOne({ where: { id: nftId, userId: req.user.id } });
+    if (!nft) throw new NotFoundException('NFT not found');
+    nft.isForTrade = true;
+    await this.nftRepository.save(nft);
+    return { message: 'NFT set for trade' };
+  }
+
+  @ApiOperation({ summary: 'Transfer (trade) an NFT to another user' })
+  @ApiResponse({ status: 200, description: 'NFT transferred' })
+  @Post('nfts/:nftId/transfer/:toUserId')
+  @UseGuards(JwtAuthGuard)
+  async transferNft(@Param('nftId') nftId: string, @Param('toUserId') toUserId: string, @Request() req) {
+    const nft = await this.nftRepository.findOne({ where: { id: nftId, userId: req.user.id } });
+    if (!nft) throw new NotFoundException('NFT not found');
+    // Optionally, call blockchain transfer here via NftService
+    // await this.nftService.transferNft(nft.tokenId, toUserWalletAddress);
+    nft.userId = toUserId;
+    nft.isForTrade = false;
+    nft.isShowcased = false;
+    await this.nftRepository.save(nft);
+    return { message: 'NFT transferred' };
+  }
+
+  @ApiOperation({ summary: 'Get all showcased NFTs (public)' })
+  @ApiResponse({ status: 200, description: 'List of showcased NFTs', type: [Nft] })
+  @Get('nfts/showcased/all')
+  async getAllShowcasedNfts() {
+    return this.nftRepository.find({ where: { isShowcased: true } });
   }
 }
