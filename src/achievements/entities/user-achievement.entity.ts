@@ -25,6 +25,9 @@ export class UserAchievement {
   @Column({ type: 'timestamp', nullable: true })
   completedAt: Date;
 
+  @Column({ nullable: true })
+  nftId: string;
+
   @ManyToOne(() => Achievement, achievement => achievement.userAchievements)
   @JoinColumn({ name: 'achievementId' })
   achievement: Achievement;
