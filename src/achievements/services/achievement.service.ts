@@ -6,6 +6,8 @@ import { UserAchievement } from '../entities/user-achievement.entity';
 import { UserPoints } from '../entities/user-points.entity';
 import { CreateAchievementDto, AchievementCategory } from '../dto/achievement.dto';
 import { NotificationService } from '../services/notification.service';
+import { NftService } from './nft.service';
+import { Nft } from '../entities/nft.entity';
 
 @Injectable()
 export class AchievementService {
@@ -16,7 +18,10 @@ export class AchievementService {
     private userAchievementRepository: Repository<UserAchievement>,
     @InjectRepository(UserPoints)
     private userPointsRepository: Repository<UserPoints>,
+    @InjectRepository(Nft)
+    private nftRepository: Repository<Nft>,
     private notificationService: NotificationService,
+    private nftService: NftService,
   ) {}
 
   async createAchievement(createAchievementDto: CreateAchievementDto): Promise<Achievement> {
@@ -87,8 +92,23 @@ export class AchievementService {
       // Award points
       await this.awardPoints(userId, userAchievement.achievement.pointsReward);
       
+      // Mint NFT for achievement
+      const achievement = userAchievement.achievement;
+      const metadataUri = achievement.nftImage || achievement.iconUrl || '';
+      const nftMintResult = await this.nftService.mintAchievementNft(userId, achievement.id, metadataUri);
+      const nft = this.nftRepository.create({
+        userId,
+        achievementId: achievement.id,
+        tokenId: nftMintResult.tokenId,
+        contractAddress: nftMintResult.contractAddress,
+        metadataUri: nftMintResult.metadataUri,
+        isShowcased: false,
+        isForTrade: false,
+      });
+      const savedNft = await this.nftRepository.save(nft);
+      userAchievement.nftId = savedNft.id;
       // Send notification
-      await this.notificationService.sendAchievementNotification(userId, userAchievement.achievement);
+      await this.notificationService.sendAchievementNotification(userId, achievement);
     }
 
     return this.userAchievementRepository.save(userAchievement);

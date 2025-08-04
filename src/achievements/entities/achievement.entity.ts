@@ -37,6 +37,15 @@ export class Achievement {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ nullable: true })
+  nftImage: string;
+
+  @Column({ nullable: true })
+  nftExternalUrl: string;
+
+  @Column({ nullable: true })
+  nftAnimationUrl: string;
+
   @OneToMany(() => UserAchievement, userAchievement => userAchievement.achievement)
   userAchievements: UserAchievement[];
 
