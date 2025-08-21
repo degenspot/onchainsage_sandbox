@@ -9,6 +9,7 @@ import { TournamentsModule } from './tournaments/tournaments.module';
 import { WalletModule } from './wallet/wallet.module';
 import { NewsVerificationModule } from './news-verification/news-verification.module';
 import { CustomAlertsModule } from './custom-alerts/custom-alerts.module';
+import { TokenRiskModule } from './token-risk/token-risk.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { CustomAlertsModule } from './custom-alerts/custom-alerts.module';
     WalletModule, 
     NewsVerificationModule,
     CustomAlertsModule,
+    TokenRiskModule,
   ],
   controllers: [AppController],
   providers: [AppService],
