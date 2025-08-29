@@ -10,7 +10,6 @@ import { WalletModule } from './wallet/wallet.module';
 import { NewsVerificationModule } from './news-verification/news-verification.module';
 import { CustomAlertsModule } from './custom-alerts/custom-alerts.module';
 
-import { TradeSignalsModule } from './trade-signals/trading-signals.module';
 @Module({
   imports: [
     AchievementsModule, 
@@ -20,7 +19,6 @@ import { TradeSignalsModule } from './trade-signals/trading-signals.module';
     WalletModule, 
     NewsVerificationModule,
     CustomAlertsModule,
-    TradeSignalsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
